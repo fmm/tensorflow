@@ -17,9 +17,10 @@ limitations under the License.
 
 #include <deque>
 #include <unordered_map>
+#include <vector>
 
+#include "tensorflow/core/framework/memory_types.h"
 #include "tensorflow/core/framework/node_def_builder.h"
-#include "tensorflow/core/framework/op_kernel.h"
 #include "tensorflow/core/framework/types.h"
 #include "tensorflow/core/graph/costmodel.h"
 #include "tensorflow/core/graph/graph_def_builder.h"
@@ -27,6 +28,7 @@ limitations under the License.
 #include "tensorflow/core/lib/core/errors.h"
 #include "tensorflow/core/lib/hash/hash.h"
 #include "tensorflow/core/platform/logging.h"
+#include "tensorflow/core/util/device_name_utils.h"
 
 namespace tensorflow {
 
@@ -623,7 +625,6 @@ Status AddControlLoop(const PartitionOptions& opts, Graph* g, const Node* src,
 // TODO(yuanbyu): It might be simpler if we convert MemoryType to
 // DeviceType for the inputs/outputs of each node.
 Status BuildMemoryDeviceInfo(const Graph& g, GraphInfo* info) {
-  Status status;
   MemoryTypeVector input_memory_types;
   MemoryTypeVector output_memory_types;
 
@@ -638,14 +639,9 @@ Status BuildMemoryDeviceInfo(const Graph& g, GraphInfo* info) {
                               node->assigned_device_name(), "'");
     }
 
-    input_memory_types.clear();
-    input_memory_types.resize(node->num_inputs());
-    output_memory_types.clear();
-    output_memory_types.resize(node->num_outputs());
-    status = MemoryTypesForNode(g.op_registry(), DeviceType(parsed.type),
-                                node->def(), &input_memory_types,
-                                &output_memory_types);
-    if (!status.ok()) return status;
+    TF_RETURN_IF_ERROR(MemoryTypesForNode(
+        g.op_registry(), DeviceType(parsed.type), node->def(),
+        &input_memory_types, &output_memory_types));
 
     int node_id = node->id();
     info->device_types[node_id] = DeviceType(parsed.type);
@@ -656,7 +652,7 @@ Status BuildMemoryDeviceInfo(const Graph& g, GraphInfo* info) {
       info->output_types[{node_id, i}] = output_memory_types[i];
     }
   }
-  return status;
+  return Status::OK();
 }
 
 // Each participating device needs to decide a) if there is a next iteration,
@@ -1101,7 +1097,7 @@ Status Partition(const PartitionOptions& opts, Graph* g,
 
   // Set versions
   for (auto& it : *partitions) {
-    it.second.set_version(g->version());
+    it.second.mutable_versions()->CopyFrom(g->versions());
   }
 
   // Set the start times for recvs at the very end.

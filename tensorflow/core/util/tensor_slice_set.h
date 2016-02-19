@@ -24,13 +24,14 @@ limitations under the License.
 
 #include <string>  // for string
 #include <unordered_map>
+#include <vector>
 
+#include "tensorflow/core/framework/tensor_shape.h"
 #include "tensorflow/core/framework/tensor_slice.h"
 #include "tensorflow/core/framework/types.h"
+#include "tensorflow/core/lib/core/status.h"       // for Status
 #include "tensorflow/core/lib/core/stringpiece.h"  // for StringPiece
-#include "tensorflow/core/platform/port.h"         // for int64
-#include "tensorflow/core/public/status.h"         // for Status
-#include "tensorflow/core/public/tensor_shape.h"
+#include "tensorflow/core/platform/types.h"        // for int64
 
 namespace tensorflow {
 
@@ -79,6 +80,10 @@ class TensorSliceSet {
   };
   // We maintain a mapping from the slice string to the slice information.
   std::unordered_map<string, SliceInfo> slices_;
+
+  // Minimal slice which contains all presented slices. Used for speeding up
+  // overlap check when slices are being added consequently.
+  TensorSlice slices_hull_;
 };
 
 }  // namespace checkpoint

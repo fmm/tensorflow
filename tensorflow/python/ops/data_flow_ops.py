@@ -32,6 +32,7 @@ from tensorflow.python.ops import control_flow_ops
 from tensorflow.python.ops import gen_data_flow_ops
 # pylint: disable=wildcard-import
 from tensorflow.python.ops.gen_data_flow_ops import *
+# pylint: enable=wildcard-import
 
 
 def _as_type_list(dtypes):
@@ -45,7 +46,8 @@ def _as_type_list(dtypes):
     return list(dtypes)
 
 
-def _as_shape_list(shapes, dtypes, unknown_dim_allowed=False):
+def _as_shape_list(shapes, dtypes, unknown_dim_allowed=False,
+                   unknown_rank_allowed=False):
   """Convert shapes to a list of tuples of int (or None)."""
   if unknown_dim_allowed:
     if (not isinstance(shapes, collections.Sequence)
@@ -65,7 +67,8 @@ def _as_shape_list(shapes, dtypes, unknown_dim_allowed=False):
   shapes = [tensor_shape.as_shape(shape) for shape in shapes]
   if not unknown_dim_allowed:
     if any([not shape.is_fully_defined() for shape in shapes]):
-      raise ValueError("All shapes must be fully defined: %d" % len(shapes))
+      raise ValueError("All shapes must be fully defined: %s" % shapes)
+  if not unknown_rank_allowed:
     if any([shape.dims is None for shape in shapes]):
       raise ValueError("All shapes must have a defined rank: %s" % shapes)
 
@@ -565,55 +568,6 @@ ops.RegisterShape("Stack")(common_shapes.scalar_shape)
 ops.RegisterShape("StackPush")(common_shapes.unknown_shape)
 ops.RegisterShape("StackPop")(common_shapes.unknown_shape)
 ops.RegisterShape("StackClose")(_ScalarToVoidShape)
-
-
-@ops.RegisterShape("TensorArray")
-def _TensorArrayShape(op):
-  # size is a scalar
-  op.inputs[0].get_shape().merge_with(tensor_shape.scalar())
-  return [tensor_shape.vector(2)]
-
-
-@ops.RegisterShape("TensorArrayRead")
-def _TensorArrayReadShape(op):
-  # handle, index, value
-  op.inputs[0].get_shape().merge_with(tensor_shape.vector(2))
-  op.inputs[1].get_shape().merge_with(tensor_shape.scalar())
-  return [tensor_shape.unknown_shape()]
-
-
-@ops.RegisterShape("TensorArrayWrite")
-def _TensorArrayWriteShape(op):
-  # handle, index
-  op.inputs[0].get_shape().merge_with(tensor_shape.vector(2))
-  op.inputs[1].get_shape().merge_with(tensor_shape.scalar())
-  return []
-
-
-@ops.RegisterShape("TensorArrayClose")
-def _TensorArrayCloseShape(op):
-  """Shape function for ops that take a scalar and produce no outputs."""
-  op.inputs[0].get_shape().merge_with(tensor_shape.vector(2))
-  return []
-
-
-@ops.RegisterShape("TensorArrayGrad")
-def _TensorArrayGradShape(op):
-  """Shape function for ops that take a scalar and produce no outputs."""
-  op.inputs[0].get_shape().merge_with(tensor_shape.vector(2))
-  return [tensor_shape.vector(2)]
-
-
-@ops.RegisterShape("TensorArrayPack")
-def _TensorArrayPackShape(op):
-  op.inputs[0].get_shape().merge_with(tensor_shape.vector(2))
-  return [tensor_shape.unknown_shape()]
-
-
-@ops.RegisterShape("TensorArrayUnpack")
-def _TensorArrayUnpackShape(op):
-  op.inputs[0].get_shape().merge_with(tensor_shape.vector(2))
-  return []
 
 
 @ops.RegisterShape("DynamicPartition")

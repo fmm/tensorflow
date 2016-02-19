@@ -17,7 +17,7 @@ limitations under the License.
 #define TENSORFLOW_PLATFORM_REGEXP_H_
 
 #include "tensorflow/core/platform/platform.h"
-#include "tensorflow/core/platform/port.h"
+#include "tensorflow/core/platform/types.h"
 
 #if defined(PLATFORM_GOOGLE) || defined(PLATFORM_GOOGLE_ANDROID)
 #include "tensorflow/core/platform/google/build_config/re2.h"
@@ -27,7 +27,7 @@ typedef ::StringPiece RegexpStringPiece;
 
 #else
 
-#include "external/re2/re2/re2.h"
+#include "re2/re2.h"
 namespace tensorflow {
 typedef re2::StringPiece RegexpStringPiece;
 }  // namespace tensorflow

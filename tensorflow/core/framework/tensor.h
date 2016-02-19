@@ -21,16 +21,16 @@ limitations under the License.
 #include "tensorflow/core/framework/allocator.h"
 #include "tensorflow/core/framework/tensor.pb.h"
 #include "tensorflow/core/framework/tensor_description.pb.h"
+#include "tensorflow/core/framework/tensor_shape.h"
 #include "tensorflow/core/framework/tensor_types.h"
 #include "tensorflow/core/framework/types.h"
 #include "tensorflow/core/framework/types.pb.h"
 #include "tensorflow/core/lib/core/refcount.h"
+#include "tensorflow/core/lib/core/status.h"
 #include "tensorflow/core/lib/core/stringpiece.h"
 #include "tensorflow/core/platform/logging.h"
 #include "tensorflow/core/platform/macros.h"
-#include "tensorflow/core/platform/port.h"
-#include "tensorflow/core/public/status.h"
-#include "tensorflow/core/public/tensor_shape.h"
+#include "tensorflow/core/platform/types.h"
 
 namespace tensorflow {
 
@@ -70,7 +70,7 @@ class Tensor {
   ~Tensor();
 
   /// Returns the data type.
-  DataType dtype() const { return type_; }
+  DataType dtype() const { return shape_.data_type(); }
 
   /// Returns the shape of the tensor.
   const TensorShape& shape() const { return shape_; }
@@ -350,8 +350,14 @@ class Tensor {
   /// REQUIRES: `DataTypeCanUseMemcpy(dtype())`.
   StringPiece tensor_data() const;
 
+  /// Copy the other tensor into this tensor and reshape it and reinterpret the
+  /// buffer's datatype.
+  ///
+  /// This tensor shares other's underlying storage.
+  void UnsafeCopyFromInternal(const Tensor&, const TensorShape&);
+
  private:
-  DataType type_;
+  void set_dtype(DataType t) { shape_.set_data_type(t); }
   TensorShape shape_;
   TensorBuffer* buf_;
 
@@ -372,7 +378,11 @@ class Tensor {
   // Tensor.
   // TODO: Remove this when we have a better story for detecting
   // uninitialized tensors.
-  void set_shape(const TensorShape& shape) { shape_ = shape; }
+  void set_shape(const TensorShape& shape) {
+    DataType dt = dtype();
+    shape_ = shape;
+    set_dtype(dt);
+  }
 
   void CopyFromInternal(const Tensor& other, const TensorShape& shape);
 
@@ -440,7 +450,7 @@ typename TTypes<T, NDIMS>::Tensor Tensor::shaped(
   CHECK_EQ(NDIMS, new_sizes.size());
   int64 new_num_elements = 1;
   Eigen::array<Eigen::DenseIndex, NDIMS> dims;
-  for (int d = 0; d < NDIMS; d++) {
+  for (size_t d = 0; d < NDIMS; d++) {
     new_num_elements *= new_sizes[d];
     dims[d] = new_sizes[d];
   }
@@ -455,7 +465,7 @@ typename TTypes<T, NDIMS>::UnalignedTensor Tensor::unaligned_shaped(
   CHECK_EQ(NDIMS, new_sizes.size());
   int64 new_num_elements = 1;
   Eigen::array<Eigen::DenseIndex, NDIMS> dims;
-  for (int d = 0; d < NDIMS; d++) {
+  for (size_t d = 0; d < NDIMS; d++) {
     new_num_elements *= new_sizes[d];
     dims[d] = new_sizes[d];
   }
@@ -471,7 +481,7 @@ typename TTypes<T, NDIMS>::ConstTensor Tensor::shaped(
   CHECK_EQ(NDIMS, new_sizes.size());
   int64 new_num_elements = 1;
   Eigen::array<Eigen::DenseIndex, NDIMS> dims;
-  for (int d = 0; d < NDIMS; d++) {
+  for (size_t d = 0; d < NDIMS; d++) {
     new_num_elements *= new_sizes[d];
     dims[d] = new_sizes[d];
   }
@@ -486,7 +496,7 @@ typename TTypes<T, NDIMS>::UnalignedConstTensor Tensor::unaligned_shaped(
   CHECK_EQ(NDIMS, new_sizes.size());
   int64 new_num_elements = 1;
   Eigen::array<Eigen::DenseIndex, NDIMS> dims;
-  for (int d = 0; d < NDIMS; d++) {
+  for (size_t d = 0; d < NDIMS; d++) {
     new_num_elements *= new_sizes[d];
     dims[d] = new_sizes[d];
   }

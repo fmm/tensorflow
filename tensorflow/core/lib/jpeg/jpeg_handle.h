@@ -14,13 +14,13 @@ limitations under the License.
 ==============================================================================*/
 
 // This file declares the functions and structures for memory I/O with libjpeg
-// These functions are not meant to be used directly, see jpeg_mem.h isntead.
+// These functions are not meant to be used directly, see jpeg_mem.h instead.
 
 #ifndef TENSORFLOW_LIB_JPEG_JPEG_HANDLE_H_
 #define TENSORFLOW_LIB_JPEG_JPEG_HANDLE_H_
 
 #include "tensorflow/core/platform/jpeg.h"
-#include "tensorflow/core/platform/port.h"
+#include "tensorflow/core/platform/types.h"
 
 namespace tensorflow {
 namespace jpeg {
